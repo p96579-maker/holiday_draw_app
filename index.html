@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <title>假期抽籤系統 v5</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #f5f7fa, #e4ecf7);
+      color: #111827;
+    }
+    .container {
+      max-width: 900px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 22px 22px 26px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      background: #4f46e5;
+    }
+    .subtitle {
+      margin-top: 4px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .subtitle strong { font-weight: 600; }
+    .section-title {
+      font-size: 15px;
+      margin: 18px 0 8px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 16px;
+      border-radius: 999px;
+      background: #4f46e5;
+    }
+    label {
+      font-size: 13px;
+      color: #374151;
+      display: block;
+      margin-bottom: 4px;
+    }
+    input[type="date"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 6px 9px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 1px rgba(79,70,229,0.22);
+    }
+    .hint {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 0.8fr;
+      gap: 12px;
+    }
+    @media (max-width: 780px) {
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 7px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.05s ease, box-shadow 0.12s ease, background 0.15s ease;
+    }
+    .btn-primary {
+      background: #4f46e5;
+      color: white;
+      box-shadow: 0 8px 18px rgba(79,70,229,0.32);
+    }
+    .btn-primary:hover {
+      background: #4338ca;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(79,70,229,0.38);
+    }
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .btn-secondary:hover {
+      background: #d1d5db;
+      transform: translateY(-1px);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: #6b7280;
+    }
+    .btn-ghost:hover {
+      background: #f3f4f6;
+      transform: translateY(-1px);
+    }
+    .btn-icon {
+      font-size: 16px;
+      line-height: 0;
+    }
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, rgba(148,163,184,0.5), rgba(148,163,184,0.1), transparent);
+      margin: 18px 0 14px;
+    }
+    .flow-note {
+      font-size: 12px;
+      color: #6b7280;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef2ff;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .flow-note strong { font-weight: 600; }
+    .pill-people-wrapper {
+      margin-top: 10px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      padding: 10px;
+      background: #f9fafb;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .pill-people-title {
+      font-size: 13px;
+      color: #4b5563;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pill-people-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .pill-person {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s ease, border-color 0.12s ease, transform 0.05s ease;
+    }
+    .pill-person input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+    .pill-person.checked {
+      background: #2563eb;
+      border-color: #1d4ed8;
+      color: #ffffff;
+      box-shadow: 0 4px 10px rgba(37,99,235,0.35);
+      transform: translateY(-1px);
+    }
+    .pill-person.checked input[type="checkbox"] {
+      accent-color: #ffffff;
+    }
+    .people-actions {
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .result-box {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 11px;
+      background: #f9fafb;
+      border: 1px dashed #cbd5f5;
+      max-height: 260px;
+      overflow-y: auto;
+      font-size: 13px;
+      white-space: pre-line;
+    }
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .result-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-gray {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .badge-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .badge-red {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .footer-note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #9ca3af;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>
+      <span class="logo-dot"></span>
+      C Team 假期抽籤系統 v5
+    </h1>
+    <div class="subtitle">
+      固定 20 個人名，三個假期 <strong>（農曆新年 / 復活節 / 聖誕節）</strong> 可以揀，設定日期「由幾號至幾號」，再喺已選擇嘅人入面公平抽籤。
+    </div>
+
+    <div class="section-title">揀假期 + 日子 + 名額</div>
+    <div class="grid-3">
+      <div>
+        <label for="holiday-select">假期</label>
+        <select id="holiday-select">
+          <option value="cny">農曆新年</option>
+          <option value="easter">復活節</option>
+          <option value="xmas">聖誕節</option>
+        </select>
+      </div>
+      <div>
+        <label>日期（由幾號至幾號）</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <input type="date" id="holiday-start">
+          <input type="date" id="holiday-end">
+        </div>
+      </div>
+      <div>
+        <label for="quota-input">今次抽幾多個中籤？</label>
+        <input type="number" id="quota-input" min="1" value="2">
+        <div class="hint">例：3 = 喺揀咗嘅人入面抽 3 個。</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">tick 人名 → 抽籤</div>
+    <div class="flow-note">
+      🎯 <strong>步驟：</strong> 1）上面揀好假期、日子同名額 → 2）揀參加者 → 3）撳「抽籤」
+    </div>
+
+    <div class="pill-people-wrapper">
+      <div class="pill-people-title">
+        <span>參加人：</span>
+        <span id="people-count-label" style="font-size:12px; color:#9ca3af;"></span>
+      </div>
+      <div id="pill-people-container" class="pill-people-container"></div>
+    </div>
+
+    <div class="people-actions">
+      <div>
+        <button class="btn-ghost" id="select-all-btn">全選</button>
+        <button class="btn-ghost" id="select-none-btn">全部取消</button>
+        <button class="btn-ghost" id="select-random-half-btn">隨機 tick 一半</button>
+      </div>
+      <div>只有被揀嘅人先會參加今次抽籤。</div>
+    </div>
+
+    <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+      <button class="btn-secondary" id="clear-result-btn">🧹 清除結果</button>
+      <button class="btn-primary" id="draw-btn">
+        <span class="btn-icon">🎲</span> 抽籤
+      </button>
+    </div>
+
+    <div class="result-box">
+      <div class="result-header">
+        <div class="result-title">結果</div>
+        <span class="badge badge-gray" id="result-status">未抽籤</span>
+      </div>
+      <div id="result">暫時仲未有結果。</div>
+    </div>
+
+    <div class="footer-note">
+      使用 Fisher–Yates shuffle 隨機演算法，確保每位被揀的參加者中籤機會完全相同。
+    </div>
+  </div>
+</div>
+
+<script>
+  const people = [
+    "CW LI",
+    "YK CHOW",
+    "CK LEUNG",
+    "YP WONG",
+    "KC CHAN",
+    "MT CHU",
+    "HL CHEUNG",
+    "PF HO",
+    "CL KWONG",
+    "PH LAO",
+    "YK LAU",
+    "WH LO",
+    "WW NG",
+    "YC WONG",
+    "CK YUEN",
+    "WC AUYEUNG",
+    "TW CHAN",
+    "TK KWOK",
+    "YT SIU",
+    "TF TAM"
+  ];
+
+  const holidayLabels = {
+    cny: "農曆新年",
+    easter: "復活節",
+    xmas: "聖誕節"
+  };
+
+  const pillContainer = document.getElementById("pill-people-container");
+  const peopleCountLabel = document.getElementById("people-count-label");
+  const quotaInput = document.getElementById("quota-input");
+  const holidaySelect = document.getElementById("holiday-select");
+  const holidayStartInput = document.getElementById("holiday-start");
+  const holidayEndInput = document.getElementById("holiday-end");
+  const resultDiv = document.getElementById("result");
+  const resultStatus = document.getElementById("result-status");
+
+  function buildPills() {
+    pillContainer.innerHTML = "";
+    people.forEach((name, index) => {
+      const label = document.createElement("label");
+      label.className = "pill-person";
+      label.dataset.index = index;
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "person-checkbox";
+      cb.dataset.index = index;
+
+      cb.addEventListener("change", () => {
+        if (cb.checked) label.classList.add("checked");
+        else label.classList.remove("checked");
+        updatePeopleCountLabel();
+      });
+
+      const span = document.createElement("span");
+      span.textContent = name;
+
+      label.appendChild(cb);
+      label.appendChild(span);
+      pillContainer.appendChild(label);
+    });
+    updatePeopleCountLabel();
+  }
+
+  function getCheckboxes() {
+    return Array.from(document.querySelectorAll(".person-checkbox"));
+  }
+
+  function updatePeopleCountLabel() {
+    const total = people.length;
+    const checked = getCheckboxes().filter(cb => cb.checked).length;
+    peopleCountLabel.textContent = `共 ${total} 人，已 tick：${checked} 人`;
+  }
+
+  function selectAll() {
+    getCheckboxes().forEach(cb => {
+      cb.checked = true;
+      cb.closest(".pill-person").classList.add("checked");
+    });
+    updatePeopleCountLabel();
+  }
+
+  function selectNone() {
+    getCheckboxes().forEach(cb => {
+      cb.checked = false;
+      cb.closest(".pill-person").classList.remove("checked");
+    });
+    updatePeopleCountLabel();
+  }
+
+  function selectRandomHalf() {
+    const checkboxes = getCheckboxes();
+    if (!checkboxes.length) return;
+    selectNone();
+    const indices = checkboxes.map((_, i) => i);
+    shuffle(indices);
+    const half = Math.ceil(indices.length / 2);
+    const chosen = new Set(indices.slice(0, half));
+    checkboxes.forEach((cb, i) => {
+      if (chosen.has(i)) {
+        cb.checked = true;
+        cb.closest(".pill-person").classList.add("checked");
+      }
+    });
+    updatePeopleCountLabel();
+  }
+
+  function clearResult() {
+    resultDiv.textContent = "暫時仲未有結果。";
+    setResultStatus("未抽籤", "gray");
+  }
+
+  function setResultStatus(text, color) {
+    resultStatus.textContent = text;
+    resultStatus.classList.remove("badge-gray", "badge-green", "badge-red");
+    if (color === "green") resultStatus.classList.add("badge-green");
+    else if (color === "red") resultStatus.classList.add("badge-red");
+    else resultStatus.classList.add("badge-gray");
+  }
+
+  // Fisher–Yates shuffle：公平隨機
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  function drawLots() {
+    const checkboxes = getCheckboxes();
+    const participants = [];
+    const notJoined = [];
+
+    checkboxes.forEach(cb => {
+      const idx = parseInt(cb.dataset.index, 10);
+      if (cb.checked) participants.push(idx);
+      else notJoined.push(idx);
+    });
+
+    if (participants.length === 0) {
+      alert("請先 tick 至少一位參加者。");
+      return;
+    }
+
+    const q = parseInt(quotaInput.value, 10);
+    const quota = isNaN(q) || q <= 0 ? 1 : q;
+    quotaInput.value = quota;
+    const winnersCount = Math.min(quota, participants.length);
+
+    const shuffled = participants.slice();
+    shuffle(shuffled);
+    const winners = new Set(shuffled.slice(0, winnersCount));
+    const losers = shuffled.slice(winnersCount);
+
+    const holidayId = holidaySelect.value;
+    const holidayName = holidayLabels[holidayId] || "假期";
+    const startDate = holidayStartInput.value;
+    const endDate = holidayEndInput.value;
+    const range = (startDate || endDate) ? `（${startDate || "?"} 至 ${endDate || "?"}）` : "";
+
+    let text = `【${holidayName}】${range}\n名額：${winnersCount}（共 ${participants.length} 人參加）\n\n`;
+
+    text += "✅ 中籤：\n";
+    shuffled.slice(0, winnersCount).forEach(idx => {
+      text += "  • " + people[idx] + "\n";
+    });
+
+    if (losers.length > 0) {
+      text += "\n❌ 落選：\n";
+      losers.forEach(idx => {
+        text += "  • " + people[idx] + "\n";
+      });
+    }
+
+    if (notJoined.length > 0) {
+      text += "\n（今次未參加 / 冇 tick）：\n";
+      notJoined.forEach(idx => {
+        text += "  • " + people[idx] + "\n";
+      });
+    }
+
+    resultDiv.textContent = text.trim();
+    setResultStatus("已完成抽籤", "green");
+  }
+
+  // 綁定事件
+  document.getElementById("select-all-btn").addEventListener("click", selectAll);
+  document.getElementById("select-none-btn").addEventListener("click", selectNone);
+  document.getElementById("select-random-half-btn").addEventListener("click", selectRandomHalf);
+  document.getElementById("draw-btn").addEventListener("click", drawLots);
+  document.getElementById("clear-result-btn").addEventListener("click", clearResult);
+
+  // 初始
+  buildPills();
+  clearResult();
+</script>
+</body>
+</html>
