@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
-  <title>假期抽籤系統 v8</title>
+  <title>C TEAM 假期抽籤系統</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -62,6 +62,18 @@
     .btn-secondary:hover { background:#d1d5db; }
     .btn-ghost { background:transparent; color:#374151; }
     .btn-ghost:hover { background:#e5e7eb; }
+    .mini-link-btn {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      font-size: 13px;
+      margin-right: 12px;
+    }
+    .mini-link-btn:hover {
+      background: transparent;
+      text-decoration: underline;
+    }
 
     /* 人名 pill */
     .pill-people-wrapper {
@@ -90,7 +102,18 @@
       color:white;
       box-shadow:0 4px 10px rgba(37,99,235,0.35);
     }
+    .pill-person.disabled {
+      opacity:0.45;
+      cursor:not-allowed;
+      background:#e5e7eb;
+      border-color:#d1d5db;
+    }
+    .pill-person.disabled input[type="checkbox"] {
+      cursor:not-allowed;
+    }
     input[type="checkbox"] { width:18px; height:18px; accent-color:#2563eb; }
+
+    .hint-small { font-size:12px; color:#6b7280; margin-top:4px; }
 
     /* 結果區 */
     .result-box {
@@ -156,16 +179,40 @@
       font-size:12px;
       color:#6b7280;
       margin-bottom:4px;
+      flex-wrap:wrap;
+      gap:6px;
     }
     .history-text { white-space:pre-line; }
+    .history-rule-tag {
+      font-size:11px;
+      padding:2px 6px;
+      border-radius:999px;
+      background:#eef2ff;
+      color:#4f46e5;
+    }
+    .history-delete-btn {
+      border-radius:999px;
+      border:none;
+      background:transparent;
+      color:#9ca3af;
+      font-size:12px;
+      cursor:pointer;
+      padding:2px 6px;
+    }
+    .history-delete-btn:hover {
+      background:#fee2e2;
+      color:#b91c1c;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
   <div class="card">
-    <h1><span class="logo-dot"></span>假期抽籤系統 v8</h1>
-    <div class="subtitle">中籤名單綠色框突出、可以一鍵複製結果，並自動保存歷史紀錄。</div>
+    <h1><span class="logo-dot"></span>C TEAM 假期抽籤系統</h1>
+    <div class="subtitle">
+      支援：連續兩次中籤下一次自動停一輪、三次落選下一次必中、結果歷史、自選刪除單條紀錄。
+    </div>
 
     <div class="section-title">揀假期 + 日子 + 名額</div>
 
@@ -190,27 +237,32 @@
       <div>
         <label>中籤名額</label>
         <input type="number" id="quota-input" min="1" value="2">
+        <div class="hint-small">* 如有多位「三次落選」必中，中籤人數可能會多過設定名額。</div>
       </div>
     </div>
 
     <div class="divider"></div>
 
-    <div class="section-title">tick 人名 → 抽籤</div>
+    <div class="section-title">揀人名 → 抽籤</div>
 
     <div class="pill-people-wrapper">
-      <div style="font-size:14px; font-weight:600; margin-bottom:6px;">
-        已 tick 人數： <span id="people-count-label"></span>
+      <div style="font-size:14px; font-weight:600; margin-bottom:4px;">
+        已揀人數： <span id="people-count-label"></span>
+      </div>
+      <div class="hint-small">
+        規則：① 連續 2 次中籤者，下一次抽籤人名會變灰唔比揀，該次抽完自動解禁；② 連續 3 次落選者，下次參加必中。
       </div>
       <div id="pill-people-container" class="pill-people-container"></div>
     </div>
 
     <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
       <div>
-        <button class="btn-ghost" id="select-all-btn">全選</button>
-        <button class="btn-ghost" id="select-none-btn">全部取消</button>
-        <button class="btn-ghost" id="select-random-half-btn">隨機 tick 一半</button>
+        <button class="btn-ghost mini-link-btn" id="select-all-btn">全選</button>
+        <button class="btn-ghost mini-link-btn" id="select-none-btn">全部取消</button>
+        <button class="btn-ghost mini-link-btn" id="select-random-half-btn">隨機 tick 一半</button>
       </div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-secondary" id="reset-rules-btn">♻ RESET 累積記錄</button>
         <button class="btn-secondary" id="copy-btn">📋 Copy 結果</button>
         <button class="btn-secondary" id="clear-result-btn">清除結果</button>
         <button class="btn-primary" id="draw-btn">🎲 抽籤</button>
@@ -245,6 +297,7 @@
   ];
   const holidayLabels = { cny:"農曆新年", easter:"復活節", xmas:"聖誕節" };
   const STORAGE_KEY = "holiday_draw_history_v1";
+  const STREAK_KEY  = "holiday_draw_streak_v2"; // name -> {wins, losses, bannedNext:boolean}
 
   const pillContainer = document.getElementById("pill-people-container");
   const peopleCountLabel = document.getElementById("people-count-label");
@@ -253,15 +306,40 @@
   const historyList = document.getElementById("history-list");
   let lastPlainText = "";
 
+  function loadStreaks(){
+    try{
+      const raw = localStorage.getItem(STREAK_KEY);
+      if(!raw) return {};
+      const obj = JSON.parse(raw);
+      return obj && typeof obj==="object" ? obj : {};
+    }catch(e){ return {}; }
+  }
+
+  function saveStreaks(streaks){
+    try{
+      localStorage.setItem(STREAK_KEY, JSON.stringify(streaks));
+    }catch(e){}
+  }
+
   function buildPills() {
+    const streaks = loadStreaks();
     pillContainer.innerHTML = "";
     people.forEach((name, idx) => {
+      const st = streaks[name] || {wins:0, losses:0, bannedNext:false};
+      if (typeof st.bannedNext !== "boolean") st.bannedNext = false;
+      const disabled = !!st.bannedNext;          // 只睇 bannedNext
+
+      const mustWin  = st.losses >= 3;           // 連續 3 次落選 → 下次必中
+
       const label = document.createElement("label");
       label.className = "pill-person";
+      if(disabled) label.classList.add("disabled");
+      if(mustWin && !disabled) label.style.borderColor = "#f97316"; // 橙色邊提示
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.dataset.index = idx;
+      cb.disabled = disabled;
 
       cb.addEventListener("change", ()=>{
         if(cb.checked) label.classList.add("checked");
@@ -270,7 +348,14 @@
       });
 
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(name));
+
+      let displayName = name;
+      if(disabled){
+        displayName += "（連續 2 次中籤，今次暫停抽籤）";
+      } else if(mustWin){
+        displayName += "（連續 3 次落選，下次必中）";
+      }
+      label.appendChild(document.createTextNode(displayName));
       pillContainer.appendChild(label);
     });
     updatePeopleCount();
@@ -281,7 +366,7 @@
   }
 
   function getChecked() {
-    return getCheckboxes().filter(c=>c.checked);
+    return getCheckboxes().filter(c=>c.checked && !c.disabled);
   }
 
   function updatePeopleCount() {
@@ -297,7 +382,7 @@
 
   function drawLots(){
     const checked = getChecked();
-    if(checked.length===0){ alert("請 tick 參加者"); return; }
+    if(checked.length===0){ alert("請 tick 參加者（灰色為今次暫停抽籤）"); return; }
 
     const holidayId = document.getElementById("holiday-select").value;
     const holiday = holidayLabels[holidayId] || "假期";
@@ -306,21 +391,84 @@
     const quotaInput = document.getElementById("quota-input");
     let q = parseInt(quotaInput.value,10);
     if(isNaN(q) || q<=0) q = 1;
-    if(q > checked.length) q = checked.length;
     quotaInput.value = q;
 
-    const indices = checked.map(cb=>parseInt(cb.dataset.index,10));
-    shuffle(indices);
-    const winnersIdx = indices.slice(0,q);
-    const losersIdx = indices.slice(q);
+    const streaks = loadStreaks();
+
+    // 記低今次之前，邊啲人係被 ban（用嚟喺抽完之後解禁）
+    const wasBannedThisRound = {};
+    people.forEach(name => {
+      const st = streaks[name] || {wins:0, losses:0, bannedNext:false};
+      wasBannedThisRound[name] = !!st.bannedNext;
+    });
+
+    // 參加者 index list（已經排除 disabled）
+    const participantIdx = checked.map(cb=>parseInt(cb.dataset.index,10));
+
+    // 規則2：連續三次落選者，今次必中
+    const mustWinIdx = participantIdx.filter(i => {
+      const st = streaks[people[i]] || {wins:0, losses:0, bannedNext:false};
+      return st.losses >= 3;
+    });
+
+    // 初步 winners = 必中者
+    let winnersIdx = [...mustWinIdx];
+
+    // 剩餘名額（如果必中已經 >= q，則實際會多過設定名額）
+    const remainingCandidates = participantIdx.filter(i => !winnersIdx.includes(i));
+    const quotaForRandom = Math.max(0, q - winnersIdx.length);
+
+    shuffle(remainingCandidates);
+    const randomWinners = remainingCandidates.slice(0, quotaForRandom);
+    winnersIdx = winnersIdx.concat(randomWinners);
+
+    // losers = 其餘參加者
+    const losersIdx = participantIdx.filter(i => !winnersIdx.includes(i));
 
     const winnerNames = winnersIdx.map(i=>people[i]);
     const loserNames = losersIdx.map(i=>people[i]);
 
-    // Build HTML result
+    // 更新 streaks：只計有參加的人 wins / losses
+    participantIdx.forEach(i=>{
+      const name = people[i];
+      const st = streaks[name] || {wins:0, losses:0, bannedNext:false};
+      if(winnersIdx.includes(i)){
+        st.wins = (st.wins || 0) + 1;
+        st.losses = 0;
+      }else{
+        st.losses = (st.losses || 0) + 1;
+        st.wins = 0;
+      }
+      streaks[name] = st;
+    });
+
+    // 先處理「今次被 ban 嘅人」：佢哋已經服完 ban，無論有冇參與今次，都要解禁
+    people.forEach(name => {
+      const st = streaks[name] || {wins:0, losses:0, bannedNext:false};
+      if(wasBannedThisRound[name]){
+        st.bannedNext = false;
+      }
+      streaks[name] = st;
+    });
+
+    // 再處理新觸發「連續 2 次中籤 → 下一次 ban」
+    participantIdx.forEach(i=>{
+      const name = people[i];
+      const st = streaks[name] || {wins:0, losses:0, bannedNext:false};
+      if(st.wins >= 2){
+        st.bannedNext = true;   // 下一次抽籤會灰左唔比揀
+        st.wins = 0;            // 用完之後由頭再計連勝
+      }
+      streaks[name] = st;
+    });
+
+    saveStreaks(streaks);
+
+    // 生成 HTML 結果
     let html = "";
     html += `<div class="result-main-header">【${holiday}】（${start} 至 ${end}）</div>`;
-    html += `<div class="result-sub">名額：${q}　｜　參加人數：${checked.length}</div>`;
+    const showQuota = winnersIdx.length > q ? `${q}（實際中籤 ${winnersIdx.length} 人）` : `${q}`;
+    html += `<div class="result-sub">名額：${showQuota}　｜　參加人數：${participantIdx.length}</div>`;
 
     html += `<div class="winners-box">`;
     html += `<div class="winners-title">✅ 中籤：</div>`;
@@ -336,25 +484,33 @@
       });
     }
 
-    html += `<div class="result-note">📌 提示：中籤者可以選擇當次所需要的假期。</div>`;
+    html += `<div class="result-note">📌 提示：中籤者可以選擇當次所需要的假期。<br>規則：連續 2 次中籤者，下一次抽籤會自動暫停一次；連續 3 次落選者，下次參加必中。</div>`;
 
     resultDiv.innerHTML = html;
     resultStatus.textContent = "完成";
     resultStatus.className = "badge badge-green";
 
-    // Build plain text for copy & history
-    let txt = `【${holiday}】（${start} 至 ${end}）\n名額：${q}（共 ${checked.length} 人參加）\n\n`;
+    // 生成 plain text 給 copy / history
+    let txt = `【${holiday}】（${start} 至 ${end}）\n名額：${showQuota}（共 ${participantIdx.length} 人參加）\n\n`;
     txt += "✅ 中籤：\n";
     winnerNames.forEach(n=>{ txt += "  • " + n + "\n"; });
     if(loserNames.length>0){
       txt += "\n❌ 落選：\n";
       loserNames.forEach(n=>{ txt += "  • " + n + "\n"; });
     }
-    txt += "\n📌 提示：中籤者可以選擇當次所需要的假期。";
+    txt += "\n📌 提示：中籤者可以選擇當次所需要的假期。\n規則：連續兩次中籤者下一次會被暫停抽籤，該次抽籤完成後自動解禁；連續三次落選者第 4 次必中。";
     lastPlainText = txt;
 
-    saveHistory({ holidayId, holiday, start, end, quota:q, participants:checked.length, winners:winnerNames, losers:loserNames, text:txt, time:new Date().toISOString() });
+    saveHistory({
+      holidayId, holiday, start, end,
+      quota:q, realWinners:winnersIdx.length,
+      participants:participantIdx.length,
+      winners:winnerNames, losers:loserNames,
+      text:txt, time:new Date().toISOString()
+    });
     renderHistory();
+    // 重新畫 pills，令禁用 / 必中提示即時更新
+    buildPills();
   }
 
   function clearResult(){
@@ -370,7 +526,6 @@
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(()=>{
         const btn = document.getElementById("copy-btn");
-        const old = btn.textContent;
         btn.textContent = "✅ 已複製";
         setTimeout(()=>{ btn.textContent = "📋 Copy 結果"; }, 1200);
       }).catch(()=>{
@@ -392,44 +547,62 @@
   }
 
   // History functions
+  const HISTORY_KEY = STORAGE_KEY; // 沿用之前 key
+
   function loadHistory(){
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(HISTORY_KEY);
       if(!raw) return [];
       const data = JSON.parse(raw);
-      if(Array.isArray(data)) return data;
-    }catch(e){}
-    return [];
+      return Array.isArray(data) ? data : [];
+    }catch(e){ return []; }
   }
 
-  function saveHistoryEntryArray(arr){
+  function saveHistoryArray(arr){
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
     }catch(e){}
   }
 
   function saveHistory(entry){
     let arr = loadHistory();
     arr.push(entry);
-    if(arr.length > 50) arr = arr.slice(arr.length-50); // keep last 50
-    saveHistoryEntryArray(arr);
+    if(arr.length > 50) arr = arr.slice(arr.length-50);
+    saveHistoryArray(arr);
   }
 
   function renderHistory(){
-    const arr = loadHistory().slice().reverse(); // newest first
+    const baseArr = loadHistory();
+    const arr = baseArr.map((v,i)=>({v,i})).reverse(); // 帶原始 index
     historyList.innerHTML = "";
-    if(arr.length === 0){
+    if(arr.length===0){
       historyList.innerHTML = '<div style="font-size:13px; color:#6b7280;">暫時未有紀錄。</div>';
       return;
     }
-    arr.forEach(item=>{
+    arr.forEach(itemWrap=>{
+      const item = itemWrap.v;
+      const originalIndex = itemWrap.i;
       const div = document.createElement("div");
       div.className = "history-item";
+      div.dataset.index = originalIndex;
       const timeStr = new Date(item.time).toLocaleString("zh-HK", { hour12:false });
+
+      let ruleTag = "";
+      if(item.realWinners > item.quota){
+        ruleTag = '<span class="history-rule-tag">含「三次落選必中」</span>';
+      }
+
       div.innerHTML = `
         <div class="history-meta">
           <span>${item.holiday}（${item.start} 至 ${item.end}）</span>
           <span>${timeStr}</span>
+        </div>
+        <div class="history-meta" style="margin-top:-4px; margin-bottom:4px;">
+          <span>名額：${item.quota}（實際中籤：${item.realWinners}）</span>
+          <span>
+            ${ruleTag}
+            <button class="history-delete-btn" data-index="${originalIndex}" title="移除此紀錄">移除</button>
+          </span>
         </div>
         <div class="history-text">${item.text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
       `;
@@ -437,8 +610,17 @@
     });
   }
 
+  function deleteHistoryEntry(originalIndex){
+    let arr = loadHistory();
+    if(originalIndex < 0 || originalIndex >= arr.length) return;
+    arr.splice(originalIndex,1);
+    saveHistoryArray(arr);
+    renderHistory();
+  }
+
   function selectAll(){
     getCheckboxes().forEach(cb=>{
+      if(cb.disabled) return;
       cb.checked = true;
       cb.closest(".pill-person").classList.add("checked");
     });
@@ -454,7 +636,7 @@
   }
 
   function selectRandomHalf(){
-    const boxes = getCheckboxes();
+    const boxes = getCheckboxes().filter(cb=>!cb.disabled);
     if(!boxes.length) return;
     selectNone();
     const idxs = boxes.map((_,i)=>i);
@@ -470,6 +652,19 @@
     updatePeopleCount();
   }
 
+  function resetRules(){
+    if(!confirm("確定要 RESET 嗎？這會清除所有連續中籤/落選紀錄及歷史紀錄。")){
+      return;
+    }
+    try{
+      localStorage.removeItem(STREAK_KEY);
+      localStorage.removeItem(HISTORY_KEY);
+    }catch(e){}
+    clearResult();
+    buildPills();
+    renderHistory();
+  }
+
   // Event binding
   document.getElementById("draw-btn").onclick = drawLots;
   document.getElementById("clear-result-btn").onclick = clearResult;
@@ -477,6 +672,15 @@
   document.getElementById("select-all-btn").onclick = selectAll;
   document.getElementById("select-none-btn").onclick = selectNone;
   document.getElementById("select-random-half-btn").onclick = selectRandomHalf;
+  document.getElementById("reset-rules-btn").onclick = resetRules;
+
+  historyList.addEventListener("click", (e)=>{
+    const btn = e.target.closest(".history-delete-btn");
+    if(!btn) return;
+    const idx = parseInt(btn.dataset.index,10);
+    if(isNaN(idx)) return;
+    deleteHistoryEntry(idx);
+  });
 
   // init
   buildPills();
