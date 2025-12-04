@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
-  <title>C TEAM 假期抽籤系統</title>
+  <title>C TEAM - 假期抽籤系統</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -62,18 +62,6 @@
     .btn-secondary:hover { background:#d1d5db; }
     .btn-ghost { background:transparent; color:#374151; }
     .btn-ghost:hover { background:#e5e7eb; }
-    .mini-link-btn {
-      padding: 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-      font-size: 13px;
-      margin-right: 12px;
-    }
-    .mini-link-btn:hover {
-      background: transparent;
-      text-decoration: underline;
-    }
 
     /* 人名 pill */
     .pill-people-wrapper {
@@ -209,7 +197,7 @@
 
 <div class="container">
   <div class="card">
-    <h1><span class="logo-dot"></span>C TEAM 假期抽籤系統</h1>
+    <h1><span class="logo-dot"></span>C TEAM - 假期抽籤系統</h1>
     <div class="subtitle">
       支援：連續兩次中籤下一次自動停一輪、三次落選下一次必中、結果歷史、自選刪除單條紀錄。
     </div>
@@ -250,17 +238,12 @@
         已揀人數： <span id="people-count-label"></span>
       </div>
       <div class="hint-small">
-        規則：① 連續 2 次中籤者，下一次抽籤人名會變灰唔比揀，該次抽完自動解禁；② 連續 3 次落選者，下次參加必中。
+        規則：① 連續 2 次中籤者，下一次抽籤的人名會變灰唔比揀，該次抽完自動解禁；② 連續 3 次落選者，下次參加必中。
       </div>
       <div id="pill-people-container" class="pill-people-container"></div>
     </div>
 
-    <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-      <div>
-        <button class="btn-ghost mini-link-btn" id="select-all-btn">全選</button>
-        <button class="btn-ghost mini-link-btn" id="select-none-btn">全部取消</button>
-        <button class="btn-ghost mini-link-btn" id="select-random-half-btn">隨機 tick 一半</button>
-      </div>
+    <div style="margin-top:12px; display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:8px;">
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn-secondary" id="reset-rules-btn">♻ RESET 累積記錄</button>
         <button class="btn-secondary" id="copy-btn">📋 Copy 結果</button>
@@ -618,40 +601,6 @@
     renderHistory();
   }
 
-  function selectAll(){
-    getCheckboxes().forEach(cb=>{
-      if(cb.disabled) return;
-      cb.checked = true;
-      cb.closest(".pill-person").classList.add("checked");
-    });
-    updatePeopleCount();
-  }
-
-  function selectNone(){
-    getCheckboxes().forEach(cb=>{
-      cb.checked = false;
-      cb.closest(".pill-person").classList.remove("checked");
-    });
-    updatePeopleCount();
-  }
-
-  function selectRandomHalf(){
-    const boxes = getCheckboxes().filter(cb=>!cb.disabled);
-    if(!boxes.length) return;
-    selectNone();
-    const idxs = boxes.map((_,i)=>i);
-    shuffle(idxs);
-    const half = Math.ceil(idxs.length/2);
-    const chosen = new Set(idxs.slice(0,half));
-    boxes.forEach((cb,i)=>{
-      if(chosen.has(i)){
-        cb.checked = true;
-        cb.closest(".pill-person").classList.add("checked");
-      }
-    });
-    updatePeopleCount();
-  }
-
   function resetRules(){
     if(!confirm("確定要 RESET 嗎？這會清除所有連續中籤/落選紀錄及歷史紀錄。")){
       return;
@@ -669,9 +618,6 @@
   document.getElementById("draw-btn").onclick = drawLots;
   document.getElementById("clear-result-btn").onclick = clearResult;
   document.getElementById("copy-btn").onclick = copyResult;
-  document.getElementById("select-all-btn").onclick = selectAll;
-  document.getElementById("select-none-btn").onclick = selectNone;
-  document.getElementById("select-random-half-btn").onclick = selectRandomHalf;
   document.getElementById("reset-rules-btn").onclick = resetRules;
 
   historyList.addEventListener("click", (e)=>{
